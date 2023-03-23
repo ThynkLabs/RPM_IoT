@@ -3,7 +3,7 @@
 #ifndef _CONNECTION_H_
 #define _CONNECTION_H_
 #include <cJSON.h>
-#include <Arduino_JSON.h>
+// #include <Arduino_JSON.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <freertos/FreeRTOS.h>
@@ -14,6 +14,16 @@
 
 #include "store.h"
 
+#define STREAM_TOPIC "bncoe/rpm/stream"
+#define FALL_TOPIC "bncoe/rpm/fall"
+#define ECG_TOPIC "bncoe/rpm/ecg"
+#define PULSE_TOPIC "bncoe/rpm/pulse"
+
+
+typedef struct mqtt_publish_queue_struct_t{
+    char*topic;
+    char*message;
+}mqtt_publish_queue_struct;
 
 /**
  * @brief wifi Task Priority
@@ -63,7 +73,7 @@ void start_mqtt_task();
  * @brief Streamer Task Priority
  * 
  */
-#define STREAMER_TASK_PRIORITY 5
+#define STREAMER_TASK_PRIORITY 10
 
 /**
  * @brief Streamer Task stack size
@@ -76,8 +86,7 @@ void start_mqtt_task();
  * 
  */
 extern TaskHandle_t task_streamer_handle;
-void sensor_data_generator_streamer(float temperature, uint8_t humidity, uint8_t spo2,uint8_t pulse);
-void send_data_to_streamer_queue(char*stream);
+void send_data_to_streamer_queue(char*topic,char*message);
 void streamer(void* param);
 void start_streamer_task();
 
@@ -85,27 +94,7 @@ void start_streamer_task();
 void test_mqtt(void* param);
 void start_test_mqtt();
 
-
-/**
- * @brief Reporter Task Priority
- * 
- */
-#define REPORTER_TASK_PRIORITY 4
-
-/**
- * @brief Reporter Task stack size
- * 
- */
-#define REPORTER_TASK_STACK_SIZE 6144
-
-/**
- * @brief Reporter Task Handler
- * 
- */
-extern TaskHandle_t task_reporter_handle;
-
-void reporter(void*param);
-void start_reporter_task();
+void publish_message(char*topic,char*message);
 
 extern QueueHandle_t streamer_queue;
 #endif

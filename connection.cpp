@@ -24,6 +24,7 @@ void start_wifi_task() {
 
 void connectToWiFi(void* parameter) {
   Serial.print("Connecting to WiFi...");
+  store_set_init_screen_buffer("Connecting to wifi..");
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -31,6 +32,7 @@ void connectToWiFi(void* parameter) {
   }
   printf("");
   printf("WiFi connected\n");
+  store_set_init_screen_buffer("Connected to wifi!");
   Serial.print("IP address: \n");
   printf("%s\n", WiFi.localIP());
   // vTaskDelete(NULL);
@@ -38,6 +40,7 @@ void connectToWiFi(void* parameter) {
     if (WiFi.status() != WL_CONNECTED) {
       printf("wifi Not Connected\n");
       store_set_wifi_status(false);
+      store_set_init_screen_buffer("Connecting to wifi..");
     }
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
@@ -55,8 +58,10 @@ void connectToMQTT(void* parameter) {
       store_set_wifi_status(true);
       if (!mqttClient.connected()) {
         Serial.print("Connecting to MQTT server...\n");
+        store_set_init_screen_buffer("Connecting HiveMQ....");
         store_set_mqtt_status(false);
         if (mqttClient.connect(mqtt_client_id)) {
+          store_set_init_screen_buffer("Connected to HiveMQ");
           printf("");
           printf("MQTT connected\n");
           store_set_mqtt_status(true);
@@ -72,36 +77,27 @@ void connectToMQTT(void* parameter) {
 
 
 
-void sensor_data_generator_streamer(float temperature, uint8_t humidity, uint8_t spo2,uint8_t pulse){
-    cJSON *data = cJSON_CreateObject();
-    cJSON_AddNumberToObject(data, "temperature",temperature);
-    cJSON_AddNumberToObject(data, "humidity",humidity);
-    cJSON_AddNumberToObject(data, "spo2",spo2);
-    cJSON_AddNumberToObject(data, "pulse",pulse);
-    char *string;
-    string = cJSON_PrintUnformatted(data);
-    send_data_to_streamer_queue(string);
-    cJSON_Delete(data);
-    cJSON_free(string);
-}
-
 void start_streamer_task() {
   xTaskCreatePinnedToCore(&streamer, "streamer", STREAMER_TASK_STACK_SIZE, NULL, STREAMER_TASK_PRIORITY, &task_streamer_handle, 0);
 }
 
 void streamer(void* param) {
-  char *data= NULL;
+  mqtt_publish_queue_struct queue_data;
+  streamer_queue = xQueueCreate(7, 10*sizeof(char));
   while (1) {
-    if (xQueueReceive(streamer_queue, &data, 100 / portTICK_PERIOD_MS)) {
+    if (xQueueReceive(streamer_queue, &(queue_data), 100 / portTICK_PERIOD_MS)) {
       // printf("PUB STREAM %s\n", data);
-      mqttClient.publish("bncoe/rpm/stream", data);
+      mqttClient.publish(queue_data.topic, queue_data.message);
     }
   }
 }
 
-void send_data_to_streamer_queue(char*stream)
+void send_data_to_streamer_queue(char*topic,char*message)
 {
-  xQueueSend(streamer_queue, &stream, 100 / portTICK_PERIOD_MS);  
+  mqtt_publish_queue_struct queue_data;
+  queue_data.topic=topic;
+  queue_data.message = message;
+  xQueueSend(streamer_queue,(void *)&queue_data, 100 / portTICK_PERIOD_MS);  
 }
 
 void start_test_mqtt() {
@@ -117,18 +113,7 @@ void test_mqtt(void* param) {
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
 }
-
-void start_reporter_task() {
-  xTaskCreatePinnedToCore(&reporter, "reporter", REPORTER_TASK_STACK_SIZE, NULL, REPORTER_TASK_PRIORITY, &task_reporter_handle, 0);
-}
-
-void reporter(void* param) {
-  while (1) {
-    if (store_get_mqtt_status() == true && store_get_wifi_status() == true && store_get_monitoring_flag_status()==true)
-    {
-      // mqttClient.publish("bncoe/rpm/sensor/data", data);      
-      sensor_data_generator_streamer(25.6,60,95,69);
-    }
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-  }
+void publish_message(char*topic,char*message)
+{
+  mqttClient.publish(topic, message);
 }

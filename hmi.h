@@ -18,6 +18,7 @@
 
 #include "rtos_config.h"
 #include "store.h"
+#include "sensors.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -33,15 +34,16 @@
 #define HMI_SWITCH_B 14
 #define HMI_INDICATION_LED 13
 
-#define OLED_SCREEN_COUNT 5
+#define OLED_SCREEN_COUNT 4
 
+#define OLED_ADDR   0x3C
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
 #define HMI_LOG_TAG "HMI"
 
 
-static char hmi_oled_screens[OLED_SCREEN_COUNT][25]= {"hmi_init","ecg","pulse_spo2","temperature","fall_alert"};
+static char hmi_oled_screens[OLED_SCREEN_COUNT][25]= {"pulse_spo2","temperature","ecg","fall_alert"};
 
 
 
@@ -111,7 +113,7 @@ void interrupt_task(void *Params);
  * @brief OLED HMI Task stack size
  * 
  */
-#define OLED_HMI_TASK_STACK_SIZE 6144
+#define OLED_HMI_TASK_STACK_SIZE 10240
 
 /**
  * @brief OLED HMI Task Handler
