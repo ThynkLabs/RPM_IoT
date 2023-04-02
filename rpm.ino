@@ -8,13 +8,8 @@ void setup() {
   // put your setup code here, to run once:
   
   i2c_bus_mutex = xSemaphoreCreateMutex();
-  printf("Setup Done"); 
   start_oled_task(); 
-  // if (!isWireInitialized) {
-  //   Wire.begin();
-  //   isWireInitialized = true;
-  // }
-  
+  // start_oled_ecg_task();
    start_led_indication_task();
   start_interrupt_task();
   start_wifi_task();
@@ -26,8 +21,6 @@ start_streamer_task();
   start_pulse_sensor_task();
   start_temp_sensor_task();
   start_ecg_sensor_task();
-// start_test_mqtt();
-  // xTaskCreate(&OnConnected, "handel comms", 1024 * 3, NULL, 5, NULL);s
 }
 
 void loop() {

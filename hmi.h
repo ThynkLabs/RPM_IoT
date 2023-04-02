@@ -128,6 +128,9 @@ void start_oled_task();
 
 void oled_task(void*Params);
 
+void start_oled_ecg_task();
+void oled_ecg_task(void *Params);
+
 
 
 // ---------------------------------------------------------------------------------LED Indication-------------------------------------------------------------------------------

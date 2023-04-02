@@ -48,6 +48,8 @@ PulseOximeter pox;
 uint32_t tsLastReport = 0;
 
 void onBeatDetected() {
+
+  // vTaskDelay(100 / portTICK_PERIOD_MS);
   ESP_LOGI(SENSOR_TAG, "BEAT.");
 }
 
@@ -76,7 +78,13 @@ void pulse_sensor_task(void *Params) {
   while (1) {
     // Make sure to call update as fast as possible
     if (xSemaphoreTake(i2c_bus_mutex, 1000 / portTICK_PERIOD_MS)) {
+  //       pox.shutdown();
+  // vTaskDelay(100 / portTICK_PERIOD_MS);
+  // pox.resume();
+  // vTaskDelay(100 / portTICK_PERIOD_MS);
       pox.update();
+      
+      //  vTaskDelay(100 / portTICK_PERIOD_MS);
 
       // Asynchronously dump heart rate and oxidation levels to the serial
       // For both, a value of 0 means "invalid"
@@ -96,7 +104,8 @@ void pulse_sensor_task(void *Params) {
 
       xSemaphoreGive(i2c_bus_mutex);
     }
-    vTaskDelay(100 / portTICK_PERIOD_MS);
+    
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
 void start_pulse_sensor_task() {
@@ -244,17 +253,18 @@ void ecg_sensor_task(void *Params) {
     // sprintf(my_string, "%.2f", sensor);
     // sprintf(num, "%f", sensor);
     // send_data_to_streamer_queue(ECG_TOPIC, num);
-    // if (store_get_mqtt_status() == true && store_get_monitoring_flag_status() == true) {
-    //   cJSON *data = cJSON_CreateObject();
-    //   cJSON_AddNumberToObject(data, "ecg", sensor);
-    //   char *string;
-    //   string = cJSON_PrintUnformatted(data);
-    //   // send_data_to_streamer_queue(PULSE_TOPIC, string);
-    //   publish_message(ECG_TOPIC, string);
-    //   cJSON_Delete(data);
-    //   cJSON_free(string);
-    // }
-    vTaskDelay(100 / portTICK_PERIOD_MS);
+    if (store_get_mqtt_status() == true && store_get_monitoring_flag_status() == true) {
+      cJSON *data = cJSON_CreateObject();
+      cJSON_AddNumberToObject(data, "ecg", sensor);
+      char *string;
+      string = cJSON_PrintUnformatted(data);
+      send_data_to_streamer_queue(ECG_TOPIC, string);
+      // publish_message(ECG_TOPIC, string);
+      cJSON_Delete(data);
+      cJSON_free(string);
+    }
+
+    vTaskDelay(500 / portTICK_PERIOD_MS);
   }
 }
 

@@ -35,7 +35,7 @@ extern SemaphoreHandle_t i2c_bus_mutex;
  * @brief Temperature Task Priority
  * 
  */
-#define TEMP_TASK_PRIORITY 8
+#define TEMP_TASK_PRIORITY 4
 
 /**
  * @brief Temperature Task stack size
@@ -62,7 +62,7 @@ void temp_sensor_task(void*Params);
  * @brief Pulse Sensor Task Priority
  * 
  */
-#define PULSE_TASK_PRIORITY 8
+#define PULSE_TASK_PRIORITY 10
 
 /**
  * @brief Pulse Sensor Task stack size
@@ -75,6 +75,8 @@ void temp_sensor_task(void*Params);
  * 
  */
 extern TaskHandle_t task_pulse_sensor_handle;
+
+extern PulseOximeter pox;
 
 void pulse_sensor_data_streamer(uint8_t spo2, float pulse);
 
@@ -115,7 +117,7 @@ void fall_detection_task(void*Params);
  * @brief ECG Sensor Task Priority
  * 
  */
-#define ECG_SENSOR_TASK_PRIORITY 8
+#define ECG_SENSOR_TASK_PRIORITY 6
 
 /**
  * @brief ECG Sensor Task stack size

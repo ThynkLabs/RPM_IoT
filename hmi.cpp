@@ -63,6 +63,11 @@ void interrupt_task(void *Params) {
         // If pressed for 3 to 5 Seconds
         // set start monitoring
         store_set_monitoring_flag_status(!store_get_monitoring_flag_status());
+        // if (store_get_monitoring_flag_status()) {
+        //   pox.resume();
+        // } else if (!store_get_monitoring_flag_status()) {
+        //   pox.shutdown();
+        // }
       }
       count = 0;
       store_set_interrupt_time_counter(0);
@@ -89,9 +94,13 @@ void display_interrupt_count() {
   }
 }
 
+
+void start_oled_ecg_task() {
+  xTaskCreate(&oled_ecg_task, "oled_ecg_task", OLED_HMI_TASK_STACK_SIZE, NULL, OLED_HMI_TASK_PRIORITY-2, NULL);
+}
+
 void oled_ecg_task(void *Params) {
   while (1) {
-
     if (xSemaphoreTake(i2c_bus_mutex, 2000 / portTICK_PERIOD_MS)) {
       if (store_get_monitoring_flag_status() == true) {
         if (strcmp(hmi_oled_screens[store_get_current_screen()], "ecg") == 0) {
@@ -140,12 +149,17 @@ void start_oled_task() {
 
 void oled_task(void *Params) {
   display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
+  uint8_t screen = 0;
   // xTaskCreate(&oled_ecg_task, "oled_ecg_task", 2048, NULL, 4, NULL);
   while (1) {
-
     if (xSemaphoreTake(i2c_bus_mutex, 2000 / portTICK_PERIOD_MS)) {
       if (store_get_monitoring_flag_status() == true) {
+        // if screen was 2(ecg) then restart pox
+
         if (strcmp(hmi_oled_screens[store_get_current_screen()], "pulse_spo2") == 0) {
+          // if (strcmp(hmi_oled_screens[screen], "ecg") == 0 ) {
+            // vTaskDelay(10 / portTICK_PERIOD_MS);
+          // }
           display.clearDisplay();
           display.setTextSize(1.5);
           display.setTextColor(WHITE);
@@ -184,7 +198,8 @@ void oled_task(void *Params) {
 
           display_interrupt_count();
           display.display();
-        } else if (strcmp(hmi_oled_screens[store_get_current_screen()], "fall_alert") == 0) {
+        }
+        else if (strcmp(hmi_oled_screens[store_get_current_screen()], "fall_alert") == 0) {
           display.clearDisplay();
           display.setTextSize(2);
           display.setTextColor(WHITE);
@@ -237,10 +252,14 @@ void oled_task(void *Params) {
 
 void change_screen_inc_logic() {
   uint8_t cs = store_get_current_screen();
+  //   if(strcmp(hmi_oled_screens[cs], "ecg") == 0){
+  // pox.shutdown();
+  //     vTaskDelay(100 / portTICK_PERIOD_MS);
+  // pox.resume();
+  //   }
   if (cs >= OLED_SCREEN_COUNT - 2) {
     store_change_current_screen(0);
-  } 
-  else {
+  } else {
     store_change_current_screen(cs + 1);
   }
 }
