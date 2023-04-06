@@ -32,7 +32,7 @@
 
 #define HMI_SWITCH_A 12
 #define HMI_SWITCH_B 14
-#define HMI_INDICATION_LED 13
+#define HMI_INDICATION_LED 27
 
 #define OLED_SCREEN_COUNT 4
 

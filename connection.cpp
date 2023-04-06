@@ -1,7 +1,7 @@
 #include "connection.h"
 
-const char* ssid = "Dany";
-const char* password = "Dany1234";
+const char* ssid = "Test";
+const char* password = "Test1234";
 const char* mqtt_server = "broker.hivemq.com";
 const int mqtt_port = 1883;
 const char* mqtt_user = "";
@@ -83,9 +83,9 @@ void start_streamer_task() {
 
 void streamer(void* param) {
   mqtt_publish_queue_struct queue_data;
-  streamer_queue = xQueueCreate(7, 10*sizeof(char));
+  streamer_queue = xQueueCreate(15, 10*sizeof(char));
   while (1) {
-    if (xQueueReceive(streamer_queue, &(queue_data), 100 / portTICK_PERIOD_MS)) {
+    if (xQueueReceive(streamer_queue, &(queue_data), 50 / portTICK_PERIOD_MS)) {
       // printf("PUB STREAM %s\n", data);
       mqttClient.publish(queue_data.topic, queue_data.message);
     }
@@ -97,7 +97,7 @@ void send_data_to_streamer_queue(char*topic,char*message)
   mqtt_publish_queue_struct queue_data;
   queue_data.topic=topic;
   queue_data.message = message;
-  xQueueSend(streamer_queue,(void *)&queue_data, 100 / portTICK_PERIOD_MS);  
+  xQueueSend(streamer_queue,(void *)&queue_data, 10 / portTICK_PERIOD_MS);  
 }
 
 void start_test_mqtt() {

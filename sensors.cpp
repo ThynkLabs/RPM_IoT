@@ -16,23 +16,24 @@ uint8_t DHTPin = 4;
 // Initialize DHT sensor.
 DHT dht(DHTPin, DHTTYPE);
 
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+
 void start_temp_sensor_task() {
   xTaskCreatePinnedToCore(&temp_sensor_task, "temp_sensor_task", TEMP_TASK_STACK_SIZE, NULL, TEMP_TASK_PRIORITY, &task_temp_handle, 0);
 }
 
 void temp_sensor_task(void *Params) {
-
+  byte addr[8];
+  float tempC;
   pinMode(DHTPin, INPUT);
   dht.begin();
+  sensors.begin();
   while (1) {
-    // read the ADC value from the temperature sensor
-    int adcVal = analogRead(PIN_LM35);
-    // convert the ADC value to voltage in millivolt
-    float milliVolt = adcVal * (ADC_VREF_mV / ADC_RESOLUTION);
-    // convert the voltage to the temperature in °C
-    float tempC = milliVolt / 10;
-
+   
     float Humidity = dht.readHumidity();
+    sensors.requestTemperatures();
+    tempC = sensors.getTempCByIndex(0);
     store_set_temperature(tempC);
     // ESP_LOGI(SENSOR_TAG,"Humidity : %f",Humidity);
     store_set_humidity(Humidity);
@@ -78,12 +79,12 @@ void pulse_sensor_task(void *Params) {
   while (1) {
     // Make sure to call update as fast as possible
     if (xSemaphoreTake(i2c_bus_mutex, 1000 / portTICK_PERIOD_MS)) {
-  //       pox.shutdown();
-  // vTaskDelay(100 / portTICK_PERIOD_MS);
-  // pox.resume();
-  // vTaskDelay(100 / portTICK_PERIOD_MS);
+      //       pox.shutdown();
+      // vTaskDelay(100 / portTICK_PERIOD_MS);
+      // pox.resume();
+      // vTaskDelay(100 / portTICK_PERIOD_MS);
       pox.update();
-      
+
       //  vTaskDelay(100 / portTICK_PERIOD_MS);
 
       // Asynchronously dump heart rate and oxidation levels to the serial
@@ -93,8 +94,8 @@ void pulse_sensor_task(void *Params) {
         // pulse =pox.getHeartRate() ;
         store_set_spo2(pox.getSpO2());
         store_set_pulse(pox.getHeartRate());
-        ESP_LOGI(SENSOR_TAG, "Heart Rate: %f/bpm.", pox.getHeartRate());
-        ESP_LOGI(SENSOR_TAG, "spo2: %d %", pox.getSpO2());
+        // ESP_LOGI(SENSOR_TAG, "Heart Rate: %f/bpm.", pox.getHeartRate());
+        // ESP_LOGI(SENSOR_TAG, "spo2: %d %", pox.getSpO2());
         // if(store_get_monitoring_flag_status())
         // {
         // pulse_sensor_data_streamer(pox.getSpO2(), pox.getHeartRate());
@@ -104,7 +105,7 @@ void pulse_sensor_task(void *Params) {
 
       xSemaphoreGive(i2c_bus_mutex);
     }
-    
+
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
@@ -171,13 +172,13 @@ void fall_detection_task(void *Params) {
     float raw_amplitude = pow(pow(ax, 2) + pow(ay, 2) + pow(az, 2), 0.5);
     int amplitude = raw_amplitude * 10;  // Mulitiplied by 10 bcz values are between 0 to 1
     // ESP_LOGI(SENSOR_TAG, "FA: %d", amplitude);
-    if (amplitude <= 4 && trigger2 == false) {  //if AM breaks lower threshold (0.4g)
+    if (amplitude <= 7 && trigger2 == false) {  //if AM breaks lower threshold (0.4g) 4
       trigger1 = true;
       ESP_LOGI(SENSOR_TAG, "TRIGGER 1 ACTIVATED");
     }
     if (trigger1 == true) {
       trigger1count++;
-      if (amplitude >= 12) {  //if AM breaks upper threshold (3g)
+      if (amplitude >= 11) {  //if AM breaks upper threshold (3g) 12
         trigger2 = true;
         ESP_LOGI(SENSOR_TAG, "TRIGGER 2 ACTIVATED");
         trigger1 = false;
@@ -216,7 +217,9 @@ void fall_detection_task(void *Params) {
     if (fall == true) {  //in event of a fall detection
       ESP_LOGI(SENSOR_TAG, "FALL DETECTED");
       //  send_event("FALL DETECTION");
-          store_change_current_screen(3);
+      send_data_to_streamer_queue(FALL_TOPIC, "FALL DETECTED");
+
+      store_change_current_screen(3);
       fall = false;
     }
     if (trigger2count >= 6) {  //allow 0.5s for orientation change
@@ -244,10 +247,35 @@ void start_ecg_sensor_task() {
 void ecg_sensor_task(void *Params) {
   pinMode(ECG_SENSOR_PIN, INPUT);
   char *my_string;
+  unsigned long lastPeakTime = 0;  // Variable to store the time of the last R-peak
+  unsigned long rrInterval;        // Variable to store the RR interval
+  unsigned long lastRRInterval;
+  unsigned long rrSum = 0;         // Variable to store the sum of RR intervals
+  unsigned int rrCount = 0;        // Variable to store the number of RR intervals
+  float meanRR;                    // Variable to store the mean RR interval
+  float sdnn;                      // Variable to store the standard deviation of RR intervals
+  float rmssd;
   while (1) {
     float sensor = analogRead(ECG_SENSOR_PIN);
     // Set in store;
+    if (sensor > 2000) {                                               // Check if R-peak is detected (threshold may vary depending on the ECG sensor used)
+      unsigned long peakTime = millis();                               // Get the time of the R-peak
+      if (lastPeakTime != 0) {                                         // Check if it's not the first R-peak
+        rrInterval = peakTime - lastPeakTime;                          // Calculate the RR interval
+        rrSum += rrInterval;                                           // Add the RR interval to the sum
+        rrCount++;                                                     // Increment the RR interval counter
+        meanRR = (float)rrSum / rrCount;                               // Calculate the mean RR interval
+        float rrDiff = rrInterval - meanRR;                            // Calculate the difference between the RR interval and mean RR interval
+        sdnn = sqrt(sq(rrDiff) / rrCount);                             // Calculate the standard deviation of RR intervals (SDNN)
+        if (rrCount > 1) {                                             // Check if there are at least two RR intervals
+          rmssd = sqrt(sq(rrInterval - lastRRInterval) + sq(rrDiff));  // Calculate the RMSSD value
+        }
+        lastRRInterval = rrInterval;  // Store the current RR interval as the last RR interval for the next loop
+      }
+      lastPeakTime = peakTime;  // Store the current peak time as the last peak time for the next loop
+    }
     store_set_ecg(sensor);
+    store_set_hrv(sdnn);
     // Report to hivemq;
 
     // sprintf(my_string, "%.2f", sensor);
@@ -256,6 +284,7 @@ void ecg_sensor_task(void *Params) {
     if (store_get_mqtt_status() == true && store_get_monitoring_flag_status() == true) {
       cJSON *data = cJSON_CreateObject();
       cJSON_AddNumberToObject(data, "ecg", sensor);
+      cJSON_AddNumberToObject(data, "hrv", sdnn);
       char *string;
       string = cJSON_PrintUnformatted(data);
       send_data_to_streamer_queue(ECG_TOPIC, string);
@@ -264,7 +293,7 @@ void ecg_sensor_task(void *Params) {
       cJSON_free(string);
     }
 
-    vTaskDelay(500 / portTICK_PERIOD_MS);
+    vTaskDelay(250 / portTICK_PERIOD_MS);
   }
 }
 
@@ -303,8 +332,8 @@ void reporter(void *param) {
     if (store_get_mqtt_status() == true && store_get_wifi_status() == true && store_get_monitoring_flag_status() == true) {
       // mqttClient.publish("bncoe/rpm/sensor/data", data);
       // ESP_LOGI(SENSOR_TAG,"SPO2:%d, pulse:%f",spo2,pulse);
-      sensor_data_generator_streamer(25.6, store_get_humidity(), store_get_spo2(), store_get_pulse());
+      sensor_data_generator_streamer(store_get_temperature(), store_get_humidity(), store_get_spo2(), store_get_pulse());
     }
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    vTaskDelay(200 / portTICK_PERIOD_MS);
   }
 }

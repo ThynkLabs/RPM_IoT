@@ -20,6 +20,7 @@ struct sensor_data{
   uint8_t spo2=0;
   float pulse=0;
   float ecg;
+  float hrv;
 }sensor_data;
 
 void store_change_current_screen(uint8_t screen)
@@ -158,4 +159,13 @@ void store_set_ecg(float value)
 float store_get_ecg()
 {
   return sensor_data.ecg;
+}
+void store_set_hrv(float value)
+{
+  sensor_data.hrv=value;
+}
+
+float store_get_hrv()
+{
+  return sensor_data.hrv;
 }

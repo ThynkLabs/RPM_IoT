@@ -79,7 +79,7 @@ void start_mqtt_task();
  * @brief Streamer Task stack size
  * 
  */
-#define STREAMER_TASK_STACK_SIZE 6144
+#define STREAMER_TASK_STACK_SIZE 10240
 
 /**
  * @brief Streamer Task Handler

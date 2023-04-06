@@ -174,6 +174,12 @@ void oled_task(void *Params) {
           display.print("SPO2 : ");
           display.print(floorf(store_get_spo2() * 100) / 100);
           display.println("%");
+          
+          display.println(" ");
+
+          display.print("HRV : ");
+          display.print(floorf(store_get_hrv() * 100) / 100);
+          display.println(" ms");
 
 
           display_interrupt_count();

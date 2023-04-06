@@ -13,6 +13,9 @@
 #include "cJSON.h"
 
 #include <Wire.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
 
 #include "MAX30100_PulseOximeter.h"
  
@@ -22,9 +25,10 @@
 
 #define ADC_VREF_mV    3300.0 // in millivolt
 #define ADC_RESOLUTION 4096.0
-#define PIN_LM35       36 // ESP32 pin GIOP36 (ADC0) connected to LM35
+// #define PIN_LM35       36 // ESP32 pin GIOP36 (ADC0) connected to LM35
 #define DHTTYPE DHT11 
 
+#define ONE_WIRE_BUS 36
 
 
 extern SemaphoreHandle_t i2c_bus_mutex;
@@ -48,7 +52,6 @@ extern SemaphoreHandle_t i2c_bus_mutex;
  * 
  */
 extern TaskHandle_t task_temp_handle;
-
 
 
 void start_temp_sensor_task();

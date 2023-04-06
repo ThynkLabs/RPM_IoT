@@ -63,4 +63,7 @@ uint8_t store_get_spo2();
 
 void store_set_ecg(float value);
 float store_get_ecg();
+
+void store_set_hrv(float value);
+float store_get_hrv();
 #endif
